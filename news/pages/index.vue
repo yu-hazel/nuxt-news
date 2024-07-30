@@ -5,31 +5,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useAsyncData } from "nuxt/app";
-import CardComponent from "./components/Card.vue";
-import type { ApiStructure, Article } from "../types/api";
+import { ref, watchEffect } from 'vue';
+import { useRoute } from 'vue-router';
+import { useAsyncData } from 'nuxt/app';
+import CardComponent from './components/Card.vue';
+import type { ApiStructure, Article } from '../types/api';
 
 const API_KEY = '149a4a84ba2747a4bc0f69636f671a30';
-const API_URL = `https://newsapi.org/v2/everything?q=Apple&from=2024-07-27&sortBy=popularity&apiKey=${API_KEY}`;
 
 const articles = ref<Article[]>([]);
+const route = useRoute();
 
-const fetchData = async () => {
+const fetchData = async (query: string) => {
+    const queryString = `q=${query}&from=2024-07-27&sortBy=popularity&apiKey=${API_KEY}`;
     try {
-        const response = await fetch(API_URL);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        const { data } = await useAsyncData<ApiStructure>('getNews', () => $fetch(`https://newsapi.org/v2/everything?${queryString}`));
+        if (data.value) {
+            articles.value = data.value.articles;
+            // console.log('Fetched articles:', data.value); // 데이터 출력
+        } else {
+            console.error('Failed to fetch data');
         }
-        const data: ApiStructure = await response.json();
-        articles.value = data.articles;
-        console.log('Fetched articles:', data); // 데이터 출력
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Failed to fetch data:', error);
     }
 };
 
-onMounted(fetchData);
+watchEffect(() => {
+    const query = route.query.q ? String(route.query.q) : 'Apple';
+    fetchData(query);
+});
 </script>
 
 <style lang="scss" scoped>
